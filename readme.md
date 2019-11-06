@@ -19,6 +19,7 @@
 ```shell
 // 进入根目录
 npm install && node src/indexjs
+
 // 访问http://localhost:8080
 ```
 
