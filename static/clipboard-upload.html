@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>clipBoard-upload</title>
+  <style>
+    h1 {
+      text-align: center;
+      color:#33495C;
+    }
+    
+    .center {
+      display: block;
+      margin: 50px auto;
+    }
+
+    .wrap {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    #uploadProgress {
+      width: 300px;
+      margin: 0;
+    }
+
+    #upload {
+      margin: 20px auto;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>clipBoard-upload demo</h1>
+  <section class="wrap center">
+    <div class="imgBox center"></div>
+    <div class="progressWrap">
+      <progress min="0" max="0" value="0" id="uploadProgress"></progress>
+      <span class="precent"></span>
+    </div>
+    <input type="button" id="upload" class="center" value="upload">
+  </section>
+
+  <script>
+    ! function() {
+      let $ = el => document.querySelector(el);
+      let formData = null;
+
+      // transform image file to base64
+      function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+          let reader = new FileReader();
+          reader.onload = e => {
+            resolve(e.currentTarget.result);
+          }
+          reader.onerror = e => {
+            reject(e);
+          }
+          reader.readAsDataURL(file);
+        });
+      }
+      // render the image to page
+      function imageHandler(src) {
+        let img = new Image();
+        img.style.cssText = `
+            max-width: 500px;
+            max-height: 600px;
+          `;
+        img.src = src;
+        img.classList.add("center");
+        $(".imgBox").innerHTML = "";
+        $(".imgBox").appendChild(img);
+      }
+      // handle the upload progress
+      function uploadProgressHandler(e) {
+        let precent = e.loaded / e.total * 100;
+        $("#uploadProgress").value = ~~precent;
+        $(".precent").innerText = precent.toFixed(2) + "%";
+      }
+      // init progress
+      function initProgress() {
+        $("#uploadProgress").value = 0;
+        $(".precent").innerText = "";
+      }
+      // post image to server
+      function postImage(file) {
+        return new Promise((resolve, reject) => {
+          formData = new FormData();
+          formData.append("file", file);
+          let xhr = new XMLHttpRequest();
+          xhr.open("POST", "upload", true);
+          xhr.onload = function() {
+            resolve(xhr.responseText);
+          };
+          xhr.onerror = reject;
+          xhr.upload.onprogress = uploadProgressHandler;
+          xhr.send(formData);
+        })
+      }
+
+      document.addEventListener("paste", e => {
+        initProgress();
+        e.stopPropagation();
+        // kind取值有: file string
+        if (e.clipboardData.items[0].kind === "file") {
+          let file = e.clipboardData.items[0].getAsFile();
+          // show image
+          fileToBase64(file)
+            .then(data => {
+              imageHandler(data);
+            })
+            .catch(err => {
+              console.error(err);
+            });
+          // post image
+          $("#upload").addEventListener("click", handlerPost);
+          function handlerPost() {
+            postImage(file)
+            .then(data => {
+              $("#upload").removeEventListener("click", handlerPost);
+              console.log(data);
+            })
+            .catch(err => {
+              $("#upload").removeEventListener("click", handlerPost);
+              console.error(err);
+            })
+          }
+        }
+        e.preventDefault();
+      })
+    }();
+  </script>
+</body>
+
+</html>

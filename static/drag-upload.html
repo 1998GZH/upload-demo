@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>drag-upload</title>
+  <style>
+    h1 {
+      text-align: center;
+      color:#33495C;
+    }
+    
+    .wrap {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+    }
+    
+    .wrap .imgBox {
+      position: relative;
+      width: 600px;
+      height: 600px;
+      border: 1px dashed #000;
+    }
+    
+    .nothing::after {
+      content: "🕵拖拽进来🕵";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%);
+      margin-top: -25px;
+      font-size: 50px;
+      color: #666;
+    }
+    
+    #progress {
+      width: 100%;
+      min-width: 300px;
+      margin: 20px auto;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>drag-upload demo</h1>
+  <section class="wrap">
+    <div class="imgBox nothing"></div>
+    <progress id="progress" min="0" max="100" value="0"></progress>
+    <input type="button" value="upload" id="upload">
+  </section>
+
+  <script>
+    ! function() {
+      let $ = el => document.querySelector(el);
+      let canUpload = false;
+
+      $(".wrap").addEventListener("dragover", e => {
+        e.preventDefault();
+      }, false);
+      $(".wrap").addEventListener("drop", async e => {
+        e.preventDefault();
+        let file = e.dataTransfer.files[0];
+        // 文件, 进度条元素(没有可以不填)
+        let handle = new ImageHandle(file, $("#progress"));
+        let base64 = await handle.toBase64();
+        handle.renderImage(base64, $(".imgBox"));
+
+        $("#upload").addEventListener("click", async() => {
+          let res = "";
+          canUpload && (res = await handle.postImage("upload"));
+          res && JSON.parse(res).success && (canUpload = false);
+        }, false);
+
+      }, false);
+
+      class ImageHandle {
+        constructor(file, progress) {
+          this.file = file;
+          this.progress = progress;
+        }
+        toBase64() {
+          return new Promise((resolve, reject) => {
+            let reader = new FileReader();
+            reader.onload = e => {
+              resolve(e.currentTarget.result);
+            };
+            reader.onerror = err => {
+              reject(err);
+            }
+            reader.readAsDataURL(this.file);
+          })
+        }
+        renderImage(base64, el) {
+          let img = new Image();
+          img.style.cssText = `
+            max-width: 600px;
+            max-height: 600px;
+          `;
+          img.src = base64;
+          el.classList.remove("nothing");
+          el.innerHTML = "";
+          el.appendChild(img);
+          canUpload = true;
+          this.progress.value = 0;
+        }
+        postImage(url) {
+          return new Promise((resolve, reject) => {
+            let xhr = new XMLHttpRequest();
+            let formData = new FormData();
+            formData.append("file", this.file);
+            xhr.open("POST", url, true);
+            xhr.onload = function(e) {
+              resolve(this.responseText);
+            }
+            if (this.progress) {
+              xhr.upload.onprogress = e => {
+                this.showProgress(e, this.progress);
+              }
+            }
+            xhr.onerror = reject;
+            xhr.send(formData);
+          });
+        }
+        showProgress(ev, el = "") {
+          let precent = 0;
+          el && (precent = ev.loaded / ev.total * 100);
+          el.value = ~~precent;
+        }
+      }
+    }();
+  </script>
+</body>
+
+</html>

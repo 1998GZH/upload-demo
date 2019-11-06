@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>ajax-upload</title>
+  <style>
+    h1 {
+      text-align: center;
+      color:#33495C;
+    }
+    .uploadWrap {
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    #progress {
+      width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>ajax-upload demo</h1>
+  <section class="uploadWrap">
+    <input type="file" name="file" id="file">
+    <input type="submit" value="upload" id="upload"><br><br>
+    <progress value="0" min="0" max="100" id="progress"></progress>
+    <span class="precent"></span>
+  </section>
+
+  <script>
+    !function() {
+      let $ = el => document.querySelector(el);
+      let file = $("#file");
+      let formData = null;
+
+      file.addEventListener("change", function() {
+        formData = new FormData();
+        let upFile = this.files[0];
+        formData.append("file", upFile);
+        initProgressView();
+      })
+      $('#upload').addEventListener("click", () => {
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", "upload", true);
+        xhr.onload = complateHandler;
+        xhr.onerror = errorHandler;
+        // 注意此处是xhr.upload.onprogress不是xhr.onprogress
+        xhr.upload.onprogress = progressHandler;
+        // formData不要设置请求头
+        // xhr.setRequestHeader("content-type", "multipart/form-data");
+        file.value && xhr.send(formData);
+      })
+
+      // 上传成功处理
+      function complateHandler(e) {
+        console.log(this.responseText);
+        // 清空上传的数据
+        file.value = "";
+      }
+      // 失败处理
+      function errorHandler(e) {
+        console.log("error: ", e);
+        // 清空上传的数据
+        file.value = "";
+      }
+      // 上传进度处理
+      function progressHandler(e) {
+        let precent = e.loaded / e.total * 100;
+        $(".precent").innerText = precent.toFixed(2) + "%";
+        $('#progress').value = ~~precent;
+      }
+      // 进度条初始化
+      function initProgressView() {
+        $('#progress').value = 0;
+        $(".precent").innerText = "";
+      }
+    }();
+  </script>
+</body>
+</html>
